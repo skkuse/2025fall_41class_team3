@@ -8,7 +8,7 @@ interface SideNavProps {
 const menus: { label: string; key: SideNavProps["active"]; dimmed?: boolean }[] =
   [
     { label: "Home", key: "home" },
-    { label: "Mypage", key: "mypage", dimmed: true },
+    { label: "Mypage", key: "mypage" },
     { label: "Discover", key: "discover", dimmed: true },
   ];
 
@@ -20,24 +20,32 @@ export default function SideNav({ active = "home" }: SideNavProps) {
     router.replace("/auth/signin");
   };
 
+  const handleNavigate = (key: SideNavProps["active"]) => {
+    if (key === "home") router.push("/");
+    if (key === "mypage") router.push("/mypage");
+  };
+
   return (
     <aside className="hidden min-h-screen w-56 flex-col border-r border-[#d8dadd] bg-white/60 px-10 pt-16 text-sm text-[#9ba0a7] sm:flex">
       <nav className="flex flex-col gap-6">
         {menus.map((item) => {
           const isActive = item.key === active;
           return (
-            <span
+            <button
               key={item.label}
-              className={`transition ${
+              type="button"
+              onClick={() => handleNavigate(item.key || "home")}
+              disabled={item.dimmed}
+              className={`text-left transition ${
                 isActive
                   ? "text-[#5c6674]"
                   : item.dimmed
-                    ? "text-[#c2c7ce]"
-                    : "text-[#aab0b7]"
+                    ? "cursor-not-allowed text-[#c2c7ce]"
+                    : "text-[#aab0b7] hover:text-[#5c6674]"
               }`}
             >
               {item.label}
-            </span>
+            </button>
           );
         })}
       </nav>

@@ -48,3 +48,7 @@ export function proxyGet(targetPath: string) {
 export function proxyPost(targetPath: string) {
   return async (req: NextRequest) => proxyRequest(req, targetPath);
 }
+
+export function proxyPut(targetPath: string) {
+  return async (req: NextRequest) => proxyRequest(req, targetPath);
+}

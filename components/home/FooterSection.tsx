@@ -6,7 +6,7 @@ interface FooterItem {
 const footerItems: FooterItem[] = [
   { title: "서비스소개", body: "청년정책 LLM은 다양한 청년 정책을 제공합니다." },
   { title: "이용 약관", body: "서비스 사용을 위한 약관을 확인하세요." },
-  { title: "문의", body: "h1su@g.skku.edu" },
+  { title: "문의", body: "kee711@g.skku.edu" },
 ];
 
 export default function FooterSection() {

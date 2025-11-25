@@ -6,6 +6,7 @@ interface InitialViewProps {
   onPromptChange: (value: string) => void;
   onSubmit: () => void;
   loading: boolean;
+  userName?: string;
 }
 
 export default function InitialView({
@@ -13,10 +14,11 @@ export default function InitialView({
   onPromptChange,
   onSubmit,
   loading,
+  userName,
 }: InitialViewProps) {
   return (
     <section className="flex flex-1 flex-col items-center justify-center gap-14 px-6 pb-14 pt-10">
-      <HeroSection />
+      <HeroSection userName={userName} />
       <PromptInput
         value={prompt}
         onChange={onPromptChange}

@@ -25,6 +25,7 @@ export default function HomePage() {
   const [recommendationIds, setRecommendationIds] = useState<number[]>([]);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [userName, setUserName] = useState("000");
 
   useEffect(() => {
     const token = getAccessToken();
@@ -34,6 +35,20 @@ export default function HomePage() {
       return;
     }
     setAuthChecked(true);
+
+    const fetchUserName = async () => {
+      try {
+        const res = await fetchWithAuth("/api/mypage/basic");
+        if (!res.ok) return;
+        const data = (await res.json()) as { nickname?: string; email?: string };
+        const nameFromApi = data.nickname || data.email || "000";
+        setUserName(nameFromApi);
+      } catch (err) {
+        console.error("[home] failed to load user name", err);
+      }
+    };
+
+    fetchUserName();
   }, [router]);
 
   const mapRecommendError = (status: number) => {
@@ -150,6 +165,7 @@ export default function HomePage() {
               onPromptChange={setPrompt}
               onSubmit={handleSubmit}
               loading={loading}
+              userName={userName}
             />
           ) : (
           <ChatView

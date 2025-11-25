@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/auth/AuthLayout";
-import InputField from "@/components/auth/InputField";
+import InputField from "@/components/common/InputField";
 import { setAuthCookies } from "@/lib/auth/tokenClient";
 
 export default function SignInPage() {

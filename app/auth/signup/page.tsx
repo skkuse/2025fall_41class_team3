@@ -3,9 +3,9 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import AuthLayout from "@/components/auth/AuthLayout";
-import InputField from "@/components/auth/InputField";
+import InputField from "@/components/common/InputField";
 import SignupStepper from "@/components/auth/SignupStepper";
-import TogglePill from "@/components/auth/TogglePill";
+import TogglePill from "@/components/common/TogglePill";
 import { setAuthCookies } from "@/lib/auth/tokenClient";
 
 const STEPS = [
@@ -102,7 +102,6 @@ const INTEREST_OPTIONS = [
 ];
 
 type MaritalStatus = "기혼" | "미혼" | "";
-type Gender = "남성" | "여성" | "";
 
 interface SignupFormState {
   email: string;
@@ -114,13 +113,11 @@ interface SignupFormState {
   birthDay: string;
   locationProvince: string;
   locationCity: string;
-  gender: Gender;
   maritalStatus: MaritalStatus;
   employmentStatus: string;
   income: string;
   education: string;
   major: string;
-  schoolName: string;
   specialGroup: string[];
   interests: string[];
 }
@@ -143,13 +140,11 @@ export default function SignupPage() {
     birthDay: "24",
     locationProvince: "서울시",
     locationCity: "",
-    gender: "남성",
     maritalStatus: "기혼",
     employmentStatus: "미취업자",
     income: "4000000",
     education: "고졸",
     major: "인문",
-    schoolName: "",
     specialGroup: ["해당없음"],
     interests: ["취업"],
   });
@@ -465,20 +460,6 @@ export default function SignupPage() {
                   }}
                 />
 
-                <div className="space-y-3">
-                  <p className="text-sm font-semibold text-[#4a5260]">성별</p>
-                  <div className="flex flex-wrap gap-3">
-                    {["남성", "여성"].map((gender) => (
-                      <TogglePill
-                        key={gender}
-                        label={gender}
-                        active={form.gender === gender}
-                        onClick={() => handleInputChange("gender", gender)}
-                      />
-                    ))}
-                  </div>
-                </div>
-
                 <p className="text-xs text-[#7b8292]">
                   모든 정보는 맞춤형 정책 추천을 위해서만 이용됩니다.
                 </p>
@@ -565,14 +546,6 @@ export default function SignupPage() {
                     </div>
                   </div>
 
-                  <InputField
-                    label="학과명"
-                    inputProps={{
-                      placeholder: "학과명을 입력해 주세요",
-                      value: form.schoolName,
-                      onChange: (e) => handleInputChange("schoolName", e.target.value),
-                    }}
-                  />
                 </div>
 
                 <div className="space-y-4">

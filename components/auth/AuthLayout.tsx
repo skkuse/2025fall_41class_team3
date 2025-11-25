@@ -17,7 +17,7 @@ export default function AuthLayout({ title, description, children }: AuthLayoutP
           ) : null}
         </header>
 
-        <main className="mt-12 w-full max-w-3xl">{children}</main>
+        <main className="mt-8 w-full max-w-3xl">{children}</main>
       </div>
     </div>
   );

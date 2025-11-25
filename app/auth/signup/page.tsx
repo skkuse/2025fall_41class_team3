@@ -312,6 +312,11 @@ export default function SignupPage() {
     setStep((prev) => prev + 1);
   };
 
+  const handlePrev = () => {
+    setError(null);
+    setStep((prev) => Math.max(1, prev - 1));
+  };
+
   const renderStatusText = (status: typeof emailStatus) => {
     if (status === "success") return <span className="text-xs font-semibold text-[#2f6bff]">사용 가능</span>;
     if (status === "error") return <span className="text-xs font-semibold text-[#d64545]">중복된 값입니다.</span>;
@@ -322,12 +327,6 @@ export default function SignupPage() {
   return (
     <AuthLayout title="회원가입" description={STEP_DESCRIPTIONS[step]}>
       <div className="flex flex-col items-center gap-8">
-        <div className="flex items-center gap-2 text-sm font-semibold text-[#f28b00]">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#f28b00] text-white shadow-[0_4px_10px_rgba(242,139,0,0.35)]">
-            1
-          </div>
-          <span className="text-[#5c6472]">회원가입 진행 단계</span>
-        </div>
 
         <SignupStepper steps={STEPS} currentStep={step} />
 
@@ -586,13 +585,23 @@ export default function SignupPage() {
               <p className="text-sm font-semibold text-[#d64545]">{error}</p>
             ) : null}
 
-            <div className="flex justify-center">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-center">
+              {step > 1 ? (
+                <button
+                  type="button"
+                  onClick={handlePrev}
+                  className="w-full max-w-xs rounded-md border border-[#cfd5df] px-6 py-3 text-base font-bold text-[#4a5260] transition hover:bg-[#f3f6ff] disabled:cursor-not-allowed"
+                  disabled={loading}
+                >
+                  이전
+                </button>
+              ) : null}
               <button
                 type="submit"
                 className="w-full max-w-xs rounded-md bg-[#2363f3] px-6 py-3 text-base font-bold text-white shadow-[0_10px_20px_rgba(35,99,243,0.28)] transition hover:bg-[#1c55d8] disabled:cursor-not-allowed disabled:bg-[#9bb8ff]"
                 disabled={loading}
               >
-                {loading ? "처리 중..." : "다음"}
+                {step === 3 ? (loading ? "회원가입 중..." : "회원가입 완료") : loading ? "처리 중..." : "다음"}
               </button>
             </div>
           </form>

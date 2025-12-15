@@ -6,27 +6,90 @@ interface PolicyDetailModalProps {
   onClose: () => void;
 }
 
+function Section({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: { label: string; value?: string }[];
+}) {
+  if (!rows.length) return null;
+
+  return (
+    <section className="space-y-3">
+      <h4 className="text-lg font-bold text-gray-900">{title}</h4>
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          className="rounded-2xl border border-dashed border-[#cfd3da] bg-[#f9fafb] px-5 py-4"
+        >
+          <p className="text-sm font-semibold text-[#576072] mb-2">
+            {row.label}
+          </p>
+          <p className="leading-relaxed whitespace-pre-wrap text-sm text-gray-800">
+            {row.value}
+          </p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+
 export default function PolicyDetailModal({
   policy,
   onClose,
 }: PolicyDetailModalProps) {
   if (!policy) return null;
 
-  // 1. 서버 데이터 키값으로 매핑 (값이 있는 것만 필터링)
-  const rows = [
-    { label: "정책 설명", value: policy.plcyExplnCn },
-    { label: "지원내용", value: policy.plcySprtCn },
-    { label: "신청 방법", value: policy.plcyAplyMthdCn },
-    { label: "신청 기간", value: policy.aplyYmd },
-    { 
-      label: "사업 기간", 
-      value: (policy.bizPrdBgngYmd && policy.bizPrdEndYmd) 
-        ? `${policy.bizPrdBgngYmd} ~ ${policy.bizPrdEndYmd}` 
-        : "" 
+  const descriptionRows = [
+  { label: "정책 설명", value: policy.plcyExplnCn },
+  { label: "지원내용", value: policy.plcySprtCn },
+  ].filter(r => r.value);
+
+  const periodRows = [
+  { label: "신청 기간", value: policy.aplyYmd },
+  {
+    label: "사업 기간",
+    value:
+      policy.bizPrdBgngYmd && policy.bizPrdEndYmd
+        ? `${policy.bizPrdBgngYmd} ~ ${policy.bizPrdEndYmd}`
+        : policy.bizPrdBgngYmd,
+  },
+  ].filter(r => r.value);
+
+  const applyRows = [
+  { label: "신청 방법", value: policy.plcyAplyMthdCn },
+  { label: "심사 방법", value: policy.srngMthdCn },
+  { label: "제출 서류", value: policy.sbmsnDcmntCn },
+  ].filter(r => r.value);
+
+  const eligibilityRows = [
+    {
+      label: "연령",
+      value:
+        policy.sprtTrgtAgeLmtYn === "N"
+          ? "제한없음"
+          : [policy.sprtTrgtMinAge, policy.sprtTrgtMaxAge]
+              .filter(Boolean)
+              .join(" ~ "),
     },
-    { label: "제출 서류", value: policy.sbmsnDcmntCn }, // 추가됨
-    { label: "심사 방법", value: policy.srngMthdCn },   // 추가됨
-  ].filter((item) => item.value);
+    { label: "거주지역", value: policy.zipCd || "전국" },
+    { label: "소득", value: policy.earnEtcCn || "무관" },
+    { label: "학력", value: policy.schoolCd || "제한없음" },
+    { label: "전공", value: policy.plcyMajorCd || "제한없음" },
+    { label: "취업상태", value: policy.jobCd || "제한없음" },
+    { label: "특화분야", value: policy.sbizCd || "제한없음" },
+    { label: "추가사항", value: policy.addAplyQlfcCndCn },
+    { label: "참여제한 대상", value: policy.ptcpPrpTrgtCn },
+  ].filter(r => r.value);
+
+  const etcRows = [
+  { label: "기타 정보", value: policy.etcMttrCn },
+  { label: "참고사이트 1", value: policy.refUrlAddr1 },
+  { label: "참고사이트 2", value: policy.refUrlAddr2 },
+].filter(r => r.value);
+
 
   // 2. 신청 페이지 이동 핸들러
   const handleApplyClick = () => {
@@ -40,7 +103,6 @@ export default function PolicyDetailModal({
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(policy.plcyNm)}`;
   window.open(googleUrl, "_blank", "noopener,noreferrer");
 };
-
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 py-6">
@@ -86,21 +148,12 @@ export default function PolicyDetailModal({
         </header>
 
         {/* 본문 (스크롤 가능하게 처리) */}
-        <div className="space-y-5 px-7 py-6 text-[#505866] overflow-y-auto">
-          {rows.map((row) => (
-            <div
-              key={row.label}
-              className="rounded-2xl border border-dashed border-[#cfd3da] bg-[#f9fafb] px-5 py-4"
-            >
-              <p className="text-sm font-semibold text-[#576072] mb-2">
-                {row.label}
-              </p>
-              {/* ★ 중요: 줄바꿈 처리를 위해 whitespace-pre-wrap 추가 */}
-              <p className="leading-relaxed whitespace-pre-wrap text-sm text-gray-800">
-                {row.value}
-              </p>
-            </div>
-          ))}
+        <div className="space-y-8 px-7 py-6 overflow-y-auto">
+          <Section title="정책 개요" rows={descriptionRows} />
+          <Section title="기간 정보" rows={periodRows} />
+          <Section title="신청방법" rows={applyRows} />
+          <Section title="신청자격" rows={eligibilityRows} />
+          <Section title="기타" rows={etcRows} />
         </div>
 
         {/* 푸터 (버튼 영역) */}

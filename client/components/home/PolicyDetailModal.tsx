@@ -30,12 +30,17 @@ export default function PolicyDetailModal({
 
   // 2. 신청 페이지 이동 핸들러
   const handleApplyClick = () => {
-    if (policy.aplyUrlAddr) {
-      window.open(policy.aplyUrlAddr, "_blank", "noopener,noreferrer");
-    } else {
-      alert("신청 페이지 URL 정보가 없습니다.");
-    }
-  };
+  if (policy.aplyUrlAddr) {
+    window.open(policy.aplyUrlAddr, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  alert("신청 페이지 URL 정보가 없습니다. 구글에서 검색할게요.");
+
+  const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(policy.plcyNm)}`;
+  window.open(googleUrl, "_blank", "noopener,noreferrer");
+};
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 py-6">

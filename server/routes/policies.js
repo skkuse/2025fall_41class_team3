@@ -209,7 +209,12 @@ router.get("/:id", authenticate, async (req, res) => {
         plcyNm, lclsfNm, mclsfNm,
         plcyKywdNm, plcyExplnCn, plcySprtCn, plcyAplyMthdCn,
         aplyYmd, bizPrdBgngYmd, bizPrdEndYmd,
-        aplyUrlAddr, srngMthdCn, sbmsnDcmntCn
+        aplyUrlAddr, srngMthdCn, sbmsnDcmntCn,
+        sprtTrgtMinAge, sprtTrgtMaxAge, sprtTrgtAgeLmtYn,
+        zipCd, earnCndSeCd, earnMinAmt, earnMaxAmt, earnEtcCn,
+        schoolCd, jobCd, plcyMajorCd, sbizCd,
+        addAplyQlfcCndCn, ptcpPrpTrgtCn,
+        etcMttrCn, refUrlAddr1, refUrlAddr2, sprtSclCnt
       FROM policies
       WHERE id = ?
       `,

@@ -20,6 +20,7 @@ export interface PolicyDetail extends PolicyCardData {
 
 
 export interface PolicyDetail {
+  id: number;
   plcyNm: string;
   lclsfNm: string;
   mclsfNm: string;

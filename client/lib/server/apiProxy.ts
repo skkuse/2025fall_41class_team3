@@ -14,6 +14,7 @@ function filterHeaders(headers: Headers) {
     }
   });
 
+  // 🔥 핵심: Authorization 강제 보존
   const auth = headers.get("authorization");
   if (auth) {
     filtered.set("authorization", auth);

@@ -1,10 +1,13 @@
 import { X } from "lucide-react";
 import type { PolicyDetail } from "./types"; // 아까 수정한 그 인터페이스(plcyNm 있는 것)
+import { useEffect, useState } from "react";
+import { fetchWithAuth } from "@/lib/auth/apiClient";
 
 interface PolicyDetailModalProps {
   policy: PolicyDetail | null;
   onClose: () => void;
 }
+
 
 const formatDateSmart = (raw?: string): string => {
   if (!raw) return "";
@@ -51,7 +54,14 @@ function Section({
           <p className="text-sm font-semibold text-[#576072] mb-2">
             {row.label}
           </p>
-          <p className="leading-relaxed whitespace-pre-wrap text-sm text-gray-800">
+
+          <p
+            className={`leading-relaxed whitespace-pre-wrap text-sm ${
+              row.value === "요약중입니다…"
+                ? "text-gray-400 animate-pulse"
+                : "text-gray-800"
+            }`}
+          >
             {row.value}
           </p>
         </div>
@@ -68,10 +78,50 @@ export default function PolicyDetailModal({
 }: PolicyDetailModalProps) {
   if (!policy) return null;
 
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryLoading, setSummaryLoading] = useState(false);
+  const [summaryError, setSummaryError] = useState(false);
+
+  useEffect(() => {
+    if (!policy?.id) return;
+
+    setSummary(null);
+    setSummaryError(false);
+    setSummaryLoading(true);
+
+    fetchWithAuth(`/api/policies/${policy.id}/summary`)
+    .then((res) => {
+      if (!res.ok) throw new Error("summary fetch failed");
+      return res.json();
+    })
+    .then((data) => {
+      setSummary(data.summary);
+    })
+    .catch(() => {
+      setSummaryError(true);
+    })
+    .finally(() => {
+      setSummaryLoading(false);
+    });
+  }, [policy.id]);
+
+
   const descriptionRows = [
   { label: "정책 설명", value: policy.plcyExplnCn },
   { label: "지원내용", value: policy.plcySprtCn },
   ].filter(r => r.value);
+
+  const summaryRows = [
+    {
+      label: "AI 요약",
+      value: summaryLoading
+        ? "요약중입니다…"
+        : summaryError
+        ? "요약을 불러오지 못했습니다."
+        : summary || "",
+    },
+  ];
+
 
  const periodRows = [
   {
@@ -214,6 +264,7 @@ const handleApplyClick = () => {
 
         {/* 본문 (스크롤 가능하게 처리) */}
         <div className="space-y-8 px-7 py-6 overflow-y-auto">
+          <Section title="한눈에 보는 정책 요약" rows={summaryRows} />
           <Section title="정책 개요" rows={descriptionRows} />
           <Section title="기간 정보" rows={periodRows} />
           <Section title="신청방법" rows={applyRows} />

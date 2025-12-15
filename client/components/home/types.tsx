@@ -5,7 +5,7 @@ export interface PolicyCardData {
   reason?: string;
   tags?: string[];
 }
-
+/*
 export interface PolicyDetail extends PolicyCardData {
   description?: string;
   support?: string;
@@ -15,4 +15,22 @@ export interface PolicyDetail extends PolicyCardData {
   category?: string;
   rating?: number;
   badge?: string;
+}
+*/
+
+
+export interface PolicyDetail {
+  plcyNm: string;
+  lclsfNm: string;
+  mclsfNm: string;
+  plcyKywdNm: string[]; // ★ 중요: 서버 코드에서 배열로 변환해서 줌
+  plcyExplnCn: string;
+  plcySprtCn: string;
+  plcyAplyMthdCn: string;
+  aplyYmd: string;
+  bizPrdBgngYmd: string;
+  bizPrdEndYmd: string;
+  aplyUrlAddr: string;
+  srngMthdCn: string;
+  sbmsnDcmntCn: string;
 }

@@ -32,91 +32,6 @@ const YEARS = Array.from({ length: 60 }, (_, i) => `${1965 + i}`);
 const MONTHS = Array.from({ length: 12 }, (_, i) => `${i + 1}`);
 const DAYS = Array.from({ length: 31 }, (_, i) => `${i + 1}`);
 
-// Flutter 기준 시/도
-const PROVINCES = [
-  "서울특별시",
-  "부산광역시",
-  "대구광역시",
-  "인천광역시",
-  "광주광역시",
-  "대전광역시",
-  "울산광역시",
-  "세종특별자치시",
-  "경기도",
-  "강원도",
-  "충청북도",
-  "충청남도",
-  "전라북도",
-  "전라남도",
-  "경상북도",
-  "경상남도",
-  "제주특별자치도",
-];
-
-// 시군구는 별도 파일(sidoSigungu.ts)로 관리 권장
-// 임시 목록 (너가 원하면 전체 300개짜리 완성본 만들어줌)
-const SIGUNGU: Record<string, string[]> = {
-	'서울특별시': [
-    '종로구', '중구', '용산구', '성동구', '광진구', '동대문구', '중랑구', '성북구',
-    '강북구', '도봉구', '노원구', '은평구', '서대문구', '마포구', '양천구', '강서구',
-    '구로구', '금천구', '영등포구', '동작구', '관악구', '서초구', '강남구', '송파구',
-    '강동구',
-  ],
-  '부산광역시': [
-    '중구', '서구', '동구', '영도구', '부산진구', '동래구', '남구', '북구',
-    '해운대구', '사하구', '금정구', '강서구', '연제구', '수영구', '사상구', '기장군',
-  ],
-  '대구광역시': [
-    '중구', '동구', '서구', '남구', '북구', '수성구', '달서구', '달성군',
-  ],
-  '인천광역시': [
-    '중구', '동구', '미추홀구', '연수구', '남동구', '부평구', '계양구', '서구',
-    '강화군', '옹진군',
-  ],
-  '광주광역시': ['동구', '서구', '남구', '북구', '광산구'],
-  '대전광역시': ['동구', '중구', '서구', '유성구', '대덕구'],
-  '울산광역시': ['중구', '남구', '동구', '북구', '울주군'],
-  '세종특별자치시': ['세종특별자치시'],
-  '경기도': [
-    '수원시', '성남시', '의정부시', '안양시', '부천시', '광명시', '평택시', '동두천시',
-    '안산시', '고양시', '과천시', '구리시', '남양주시', '오산시', '시흥시', '군포시',
-    '의왕시', '하남시', '용인시', '파주시', '이천시', '안성시', '김포시', '화성시',
-    '광주시', '여주시', '양평군', '연천군', '포천시', '가평군',
-  ],
-  '강원도': [
-    '춘천시', '원주시', '강릉시', '동해시', '태백시', '속초시', '삼척시', '홍천군',
-    '횡성군', '영월군', '평창군', '정선군', '철원군', '화천군', '양구군', '인제군',
-    '고성군', '양양군',
-  ],
-  '충청북도': [
-    '청주시', '충주시', '제천시', '보은군', '옥천군', '영동군', '증평군', '진천군',
-    '괴산군', '음성군', '단양군',
-  ],
-  '충청남도': [
-    '천안시', '공주시', '보령시', '아산시', '서산시', '논산시', '계룡시', '당진시',
-    '금산군', '부여군', '서천군', '청양군', '홍성군', '예산군', '태안군',
-  ],
-  '전라북도': [
-    '전주시', '군산시', '익산시', '정읍시', '남원시', '김제시', '완주군', '진안군',
-    '무주군', '장수군', '임실군', '순창군', '고창군', '부안군',
-  ],
-  '전라남도': [
-    '목포시', '여수시', '순천시', '나주시', '광양시', '담양군', '곡성군', '구례군',
-    '고흥군', '보성군', '화순군', '장흥군', '강진군', '해남군', '영암군', '무안군',
-    '함평군', '영광군', '장성군', '완도군', '진도군', '신안군',
-  ],
-  '경상북도': [
-    '포항시', '경주시', '김천시', '안동시', '구미시', '영주시', '영천시', '상주시',
-    '문경시', '경산시', '군위군', '의성군', '청송군', '영양군', '영덕군', '청도군',
-    '고령군', '성주군', '칠곡군', '예천군', '봉화군', '울진군', '울릉군',
-  ],
-  '경상남도': [
-    '창원시', '진주시', '통영시', '사천시', '김해시', '밀양시', '거제시', '양산시',
-    '의령군', '함안군', '창녕군', '고성군', '남해군', '하동군', '산청군', '함양군',
-    '거창군', '합천군',
-  ],
-  '제주특별자치도': ['제주시', '서귀포시'],
-};
 
 // Flutter 기준 옵션셋
 const EMPLOYMENT_OPTIONS = [
@@ -184,6 +99,289 @@ const INTEREST_OPTIONS = [
   "주거지원",
 ];
 
+const REGION_TREE: Record<string, Record<string, string[]>> = {
+  '서울특별시': {
+    '종로구': [],
+    '중구': [],
+    '용산구': [],
+    '성동구': [],
+    '광진구': [],
+    '동대문구': [],
+    '중랑구': [],
+    '성북구': [],
+    '강북구': [],
+    '도봉구': [],
+    '노원구': [],
+    '은평구': [],
+    '서대문구': [],
+    '마포구': [],
+    '양천구': [],
+    '강서구': [],
+    '구로구': [],
+    '금천구': [],
+    '영등포구': [],
+    '동작구': [],
+    '관악구': [],
+    '서초구': [],
+    '강남구': [],
+    '송파구': [],
+    '강동구': [],
+  },
+
+  '부산광역시': {
+    '중구': [],
+    '서구': [],
+    '동구': [],
+    '영도구': [],
+    '부산진구': [],
+    '동래구': [],
+    '남구': [],
+    '북구': [],
+    '해운대구': [],
+    '사하구': [],
+    '금정구': [],
+    '강서구': [],
+    '연제구': [],
+    '수영구': [],
+    '사상구': [],
+    '기장군': [],
+  },
+
+  '대구광역시': {
+    '중구': [],
+    '동구': [],
+    '서구': [],
+    '남구': [],
+    '북구': [],
+    '수성구': [],
+    '달서구': [],
+    '달성군': [],
+  },
+
+  '인천광역시': {
+    '중구': [],
+    '동구': [],
+    '미추홀구': [],
+    '연수구': [],
+    '남동구': [],
+    '부평구': [],
+    '계양구': [],
+    '서구': [],
+    '강화군': [],
+    '옹진군': [],
+  },
+
+  '광주광역시': {
+    '동구': [],
+    '서구': [],
+    '남구': [],
+    '북구': [],
+    '광산구': [],
+  },
+
+  '대전광역시': {
+    '동구': [],
+    '중구': [],
+    '서구': [],
+    '유성구': [],
+    '대덕구': [],
+  },
+
+  '울산광역시': {
+    '중구': [],
+    '남구': [],
+    '동구': [],
+    '북구': [],
+    '울주군': [],
+  },
+
+  '세종특별자치시': {
+    '세종특별자치시': [],
+  },
+
+  '경기도': {
+    '수원시': ['장안구', '권선구', '팔달구', '영통구'],
+    '성남시': ['수정구', '중원구', '분당구'],
+    '안양시': ['만안구', '동안구'],
+    '부천시': ['중구', '원미구', '남구', '소사구', '오정구'],
+    '안산시': ['상록구', '단원구'],
+    '고양시': ['덕양구', '일산동구', '일산서구'],
+    '용인시': ['처인구', '기흥구', '수지구'],
+    '의정부시': [],
+    '광명시': [],
+    '평택시': [],
+    '동두천시': [],
+    '과천시': [],
+    '구리시': [],
+    '남양주시': [],
+    '오산시': [],
+    '시흥시': [],
+    '군포시': [],
+    '의왕시': [],
+    '하남시': [],
+    '파주시': [],
+    '이천시': [],
+    '안성시': [],
+    '김포시': [],
+    '화성시': [],
+    '광주시': [],
+    '여주시': [],
+    '양평군': [],
+    '연천군': [],
+    '포천시': [],
+    '가평군': [],
+  },
+
+  '강원도': {
+    '춘천시': [],
+    '원주시': [],
+    '강릉시': [],
+    '동해시': [],
+    '태백시': [],
+    '속초시': [],
+    '삼척시': [],
+    '홍천군': [],
+    '횡성군': [],
+    '영월군': [],
+    '평창군': [],
+    '정선군': [],
+    '철원군': [],
+    '화천군': [],
+    '양구군': [],
+    '인제군': [],
+    '고성군': [],
+    '양양군': [],
+  },
+
+  '충청북도': {
+    '청주시': ['상당구', '서원구', '흥덕구', '청원구'],
+    '충주시': [],
+    '제천시': [],
+    '보은군': [],
+    '옥천군': [],
+    '영동군': [],
+    '증평군': [],
+    '진천군': [],
+    '괴산군': [],
+    '음성군': [],
+    '단양군': [],
+  },
+
+  '충청남도': {
+    '천안시': ['동남구', '서북구'],
+    '공주시': [],
+    '보령시': [],
+    '아산시': [],
+    '서산시': [],
+    '논산시': [],
+    '계룡시': [],
+    '당진시': [],
+    '금산군': [],
+    '부여군': [],
+    '서천군': [],
+    '청양군': [],
+    '홍성군': [],
+    '예산군': [],
+    '태안군': [],
+  },
+
+  '전라북도': {
+    '전주시': ['완산구', '덕진구'],
+    '군산시': [],
+    '익산시': [],
+    '정읍시': [],
+    '남원시': [],
+    '김제시': [],
+    '완주군': [],
+    '진안군': [],
+    '무주군': [],
+    '장수군': [],
+    '임실군': [],
+    '순창군': [],
+    '고창군': [],
+    '부안군': [],
+  },
+
+  '전라남도': {
+    '목포시': [],
+    '여수시': [],
+    '순천시': [],
+    '나주시': [],
+    '광양시': [],
+    '담양군': [],
+    '곡성군': [],
+    '구례군': [],
+    '고흥군': [],
+    '보성군': [],
+    '화순군': [],
+    '장흥군': [],
+    '강진군': [],
+    '해남군': [],
+    '영암군': [],
+    '무안군': [],
+    '함평군': [],
+    '영광군': [],
+    '장성군': [],
+    '완도군': [],
+    '진도군': [],
+    '신안군': [],
+  },
+
+  '경상북도': {
+    '포항시': ['남구', '북구'],
+    '경주시': [],
+    '김천시': [],
+    '안동시': [],
+    '구미시': [],
+    '영주시': [],
+    '영천시': [],
+    '상주시': [],
+    '문경시': [],
+    '경산시': [],
+    '군위군': [],
+    '의성군': [],
+    '청송군': [],
+    '영양군': [],
+    '영덕군': [],
+    '청도군': [],
+    '고령군': [],
+    '성주군': [],
+    '칠곡군': [],
+    '예천군': [],
+    '봉화군': [],
+    '울진군': [],
+    '울릉군': [],
+  },
+
+  '경상남도': {
+    '창원시': ['의창구', '성산구', '마산합포구', '마산회원구', '진해구'],
+    '진주시': [],
+    '통영시': [],
+    '사천시': [],
+    '김해시': [],
+    '밀양시': [],
+    '거제시': [],
+    '양산시': [],
+    '의령군': [],
+    '함안군': [],
+    '창녕군': [],
+    '고성군': [],
+    '남해군': [],
+    '하동군': [],
+    '산청군': [],
+    '함양군': [],
+    '거창군': [],
+    '합천군': [],
+  },
+
+  '제주특별자치도': {
+    '제주시': [],
+    '서귀포시': [],
+  },
+};
+
+
+
 type MaritalStatus = "기혼" | "미혼" | "";
 
 interface SignupFormState {
@@ -196,6 +394,7 @@ interface SignupFormState {
   birthDay: string;
   locationProvince: string;
   locationCity: string;
+  locationDistrict: string;//optional
   maritalStatus: MaritalStatus;
   employmentStatus: string;
   income: string;
@@ -216,7 +415,6 @@ export default function SignupPage() {
   const [emailStatus, setEmailStatus] = useState<"idle" | "checking" | "success" | "error">("idle");
   const [nicknameStatus, setNicknameStatus] = useState<"idle" | "checking" | "success" | "error">("idle");
 
-  // 기본값도 Flutter 기준과 동일하게 설정
   const [form, setForm] = useState<SignupFormState>({
     email: "",
     password: "",
@@ -227,6 +425,7 @@ export default function SignupPage() {
     birthDay: "23",
     locationProvince: "서울특별시",
     locationCity: "",
+    locationDistrict: "",
     maritalStatus: "미혼",
     employmentStatus: "미취업자",
     income: "0",
@@ -315,9 +514,6 @@ export default function SignupPage() {
     return true;
   };
 
-  // -------------------------------------------------------
-  // 회원가입 요청 (payload Flutter 기준 완벽 적용)
-  // -------------------------------------------------------
   const handleSignupSubmit = async () => {
     setLoading(true);
 
@@ -327,8 +523,11 @@ export default function SignupPage() {
         password: form.password,
         nickname: form.nickname,
         birthDate,
-
-        location: `${form.locationProvince} ${form.locationCity}`.trim(),
+        location: [
+                    form.locationProvince,
+                    form.locationCity,
+                    form.locationDistrict,
+                  ].filter(Boolean).join(" "),
 
         income: Number(form.income || 0),
 
@@ -336,7 +535,7 @@ export default function SignupPage() {
         education: form.education,
         major: form.major,
 
-        employmentStatus: [form.employmentStatus], // Flutter/DB 기준 배열
+        employmentStatus: [form.employmentStatus], 
 
         specialGroup: [...form.specialGroup],
         interests: [...form.interests],
@@ -382,9 +581,6 @@ export default function SignupPage() {
     return null;
   };
 
-  // -------------------------------------------------------
-  // 페이지 렌더링
-  // -------------------------------------------------------
   return (
     <AuthLayout title="회원가입" description={STEP_DESCRIPTIONS[step]}>
       <div className="flex flex-col items-center gap-8">
@@ -483,37 +679,63 @@ export default function SignupPage() {
                 {/* 지역 */}
                 <div className="space-y-3">
                   <p className="text-sm font-semibold text-[#4a5260]">거주 지역</p>
-                  <div className="grid grid-cols-2 gap-3">
 
-                    {/* 시도 */}
+                  <div className="grid grid-cols-3 gap-3">
+
+                    {/* 시/도 */}
                     <select
                       className="h-11 rounded-md border border-[#d8dbe1] bg-white px-3 text-sm"
                       value={form.locationProvince}
                       onChange={(e) => {
                         handleInputChange("locationProvince", e.target.value);
                         handleInputChange("locationCity", "");
+                        handleInputChange("locationDistrict", "");
                       }}
                     >
                       <option value="">시/도</option>
-                      {PROVINCES.map((p) => (
+                      {Object.keys(REGION_TREE).map((p) => (
                         <option key={p}>{p}</option>
                       ))}
                     </select>
 
-                    {/* 시군구 */}
+                    {/* 시 / 군 */}
                     <select
                       className="h-11 rounded-md border border-[#d8dbe1] bg-white px-3 text-sm"
                       value={form.locationCity}
-                      onChange={(e) => handleInputChange("locationCity", e.target.value)}
+                      onChange={(e) => {
+                        handleInputChange("locationCity", e.target.value);
+                        handleInputChange("locationDistrict", "");
+                      }}
+                      disabled={!form.locationProvince}
                     >
-                      <option value="">시/군/구</option>
-                      {(SIGUNGU[form.locationProvince] || []).map((c) => (
-                        <option key={c}>{c}</option>
+                      <option value="">시/군</option>
+                      {Object.keys(
+                        REGION_TREE[form.locationProvince] || {}
+                      ).map((city) => (
+                        <option key={city}>{city}</option>
                       ))}
                     </select>
 
+                    {/* 구 (있는 경우만) */}
+                    {(
+                      REGION_TREE[form.locationProvince]?.[form.locationCity]?.length ?? 0
+                    ) > 0 && (
+                      <select
+                        className="h-11 rounded-md border border-[#d8dbe1] bg-white px-3 text-sm"
+                        value={form.locationDistrict}
+                        onChange={(e) =>
+                          handleInputChange("locationDistrict", e.target.value)
+                        }
+                      >
+                        <option value="">구</option>
+                        {REGION_TREE[form.locationProvince][form.locationCity].map((d) => (
+                          <option key={d}>{d}</option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                 </div>
+
 
                 <InputField
                   label="닉네임"

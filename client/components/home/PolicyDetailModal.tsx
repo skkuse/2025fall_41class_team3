@@ -93,16 +93,33 @@ export default function PolicyDetailModal({
 
   // 2. 신청 페이지 이동 핸들러
   const handleApplyClick = () => {
-  if (policy.aplyUrlAddr) {
-    window.open(policy.aplyUrlAddr, "_blank", "noopener,noreferrer");
+  const aply = typeof policy.aplyUrlAddr === "string" ? policy.aplyUrlAddr.trim() : "";
+  if (aply) {
+    // 신청 사이트는 alert 없이 바로 이동
+    window.open(aply, "_blank", "noopener,noreferrer");
     return;
   }
 
-  alert("신청 페이지 URL 정보가 없습니다. 구글에서 검색할게요.");
+  const ref1 = typeof policy.refUrlAddr1 === "string" ? policy.refUrlAddr1.trim() : "";
+  if (ref1) {
+    alert("참고페이지 1로 이동합니다.");
+    window.open(ref1, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  const ref2 = typeof policy.refUrlAddr2 === "string" ? policy.refUrlAddr2.trim() : "";
+  if (ref2) {
+    alert("참고페이지 2로 이동합니다.");
+    window.open(ref2, "_blank", "noopener,noreferrer");
+    return;
+  }
+
+  alert("신청/참고 URL 정보가 없습니다. 구글에서 검색할게요.");
 
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(policy.plcyNm)}`;
   window.open(googleUrl, "_blank", "noopener,noreferrer");
 };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 py-6">

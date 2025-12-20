@@ -19,17 +19,23 @@ export default function DiscoverPage() {
   const [recent, setRecent] = useState<PolicyCardData[]>([]);
   const [selectedPolicy, setSelectedPolicy] = useState<PolicyDetail | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
-  const categoryOptions = [
-    { label: "주거", value: "주거" },
-    { label: "교육", value: "교육" },
-    { label: "창업", value: "창업" },
-    { label: "취업", value: "취업" },
-    { label: "보건", value: "보건" },
-    { label: "육아", value: "육아" },
-    { label: "교통", value: "교통" },
+  // Filters: match Mypage fields
+  const [income, setIncome] = useState<number | "">("");
+  const [selectedSpecialGroups, setSelectedSpecialGroups] = useState<string[]>([]);
+
+  const SPECIAL_GROUP_OPTIONS = [
+    "중소기업",
+    "여성",
+    "기초생활수급자",
+    "한부모가정",
+    "장애인",
+    "농업인",
+    "군인",
+    "지역인재",
+    "기타",
   ];
+
 
   useEffect(() => {
     // Fetch popular and recent on mount
@@ -61,38 +67,56 @@ export default function DiscoverPage() {
     fetchLists();
   }, []);
 
-  const handleRecommend = async () => {
-    if (!prompt.trim()) return;
+  const handleSearch = async () => {
+    // Search the DB (server-side search_v2) and narrow client-side by income if provided
     setLoading(true);
     setStatusMessage(null);
 
     try {
-      // If categories are selected, prepend them to the prompt to bias recommendations
-      const combinedPrompt = selectedCategories.length
-        ? `${selectedCategories.join(", ")} 카테고리에 해당하는 정책. ${prompt.trim()}`
-        : prompt.trim();
+      const params = new URLSearchParams();
+      if (prompt.trim()) params.set("q", prompt.trim());
+      if (selectedSpecialGroups.length) params.set("specialGroup", selectedSpecialGroups.join(","));
 
-      const res = await fetchWithAuth(
-        `/api/policies/recommend?prompt=${encodeURIComponent(combinedPrompt)}`
-      );
-
-      if (res.ok) {
-        const data = (await res.json()) as { recommendations?: any[] };
-        const recs: PolicyCardData[] = (data.recommendations || []).map((r) => ({
-          id: r.id,
-          title: r.plcyNm || r.title || "정책 제목",
-          summary: r.reason || r.summary || "",
-          tags: r.badges || r.tags,
-        }));
-        setRecommendations(recs);
-      } else {
+      const res = await fetchWithAuth(`/api/policies/search?${params.toString()}`);
+      if (!res.ok) {
         const text = await res.text();
-        setStatusMessage(text || "추천 요청에 실패했습니다.");
+        setStatusMessage(text || "검색에 실패했습니다.");
         setRecommendations([]);
+        return;
       }
+
+      const list = (await res.json()) as { id: number; plcyNm: string }[];
+
+      // Fetch details for top results (limit to 30 to avoid heavy requests)
+      const ids = list.slice(0, 30).map((r) => r.id);
+      const detailPromises = ids.map((id) => fetchWithAuth(`/api/policies/${id}`).then((r) => (r.ok ? r.json() : null)).catch(() => null));
+      const details = (await Promise.all(detailPromises)) as (Partial<PolicyDetail> | null)[];
+
+      // Apply income filter if provided
+      const filtered = details
+        .map((d) => d)
+        .filter(Boolean) as PolicyDetail[];
+
+      const final = filtered.filter((p) => {
+        if (income === "") return true;
+        const inc = Number(income);
+        const min = Number((p as any).earnMinAmt || 0);
+        const max = Number((p as any).earnMaxAmt || 0);
+        if (min === 0 && max === 0) return true; // treat as unrestricted
+        return inc >= min && inc <= max;
+      });
+
+      const recs: PolicyCardData[] = final.map((p) => ({
+        id: p.id,
+        title: p.plcyNm || "정책 제목",
+        summary: p.plcySprtCn || "",
+        tags: p.plcyKywdNm || [],
+      }));
+
+      setRecommendations(recs);
     } catch (err) {
       console.error(err);
-      setStatusMessage("추천 요청에 실패했습니다.");
+      setStatusMessage("검색에 실패했습니다. 잠시 후 다시 시도해주세요.");
       setRecommendations([]);
     } finally {
       setLoading(false);
@@ -125,22 +149,36 @@ export default function DiscoverPage() {
             <section className="mb-8">
               <h3 className="mb-4 text-lg font-semibold">맞춤 추천</h3>
 
-              {/* 카테고리 필터 */}
-              <div className="mb-4">
-                <p className="mb-2 text-sm text-[#6f7784]">카테고리로 추천 결과를 좁힐 수 있어요</p>
-                <CheckboxPills
-                  options={categoryOptions}
-                  values={selectedCategories}
-                  onChange={setSelectedCategories}
-                />
+              {/* 필터: 소득 + 특화 그룹 (mypage와 동일) */}
+              <div className="mb-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <p className="mb-2 text-sm text-[#6f7784]">소득 (원)</p>
+                  <input
+                    type="number"
+                    value={income === "" ? "" : income}
+                    onChange={(e) => setIncome(e.target.value === "" ? "" : Number(e.target.value))}
+                    className="h-11 w-full rounded-md border px-3 text-sm"
+                    placeholder="예) 3000000"
+                  />
+                </div>
+
+                <div>
+                  <p className="mb-2 text-sm text-[#6f7784]">특화 분야</p>
+                  <CheckboxPills
+                    options={SPECIAL_GROUP_OPTIONS.map((v) => ({ label: v, value: v }))}
+                    values={selectedSpecialGroups}
+                    onChange={setSelectedSpecialGroups}
+                  />
+                </div>
               </div>
 
               <PromptInput
                 value={prompt}
                 onChange={setPrompt}
-                onSubmit={handleRecommend}
+                onSubmit={handleSearch}
                 loading={loading}
                 helperText={statusMessage || undefined}
+                buttonLabel="검색"
               />
 
               <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">

@@ -350,72 +350,79 @@ export default function BasicInfoSection({
       </FieldRow>
 
       <FieldRow label="거주 지역">
-        <div className="grid grid-cols-2 gap-3">
+  {/* 기존 grid-cols-2 gap-3을 flex gap-2로 수정 */}
+  <div className="flex w-full gap-2">
+    <div className="flex-1">
+      <SelectInput
+        readOnly={readOnly}
+        selectProps={{
+          value: province,
+          onChange: (e) => {
+            setProvince(e.target.value);
+            setCity("");
+            setDistrict("");
+          },
+        }}
+      >
+        <option value="">시/도</option>
+        {Object.keys(REGION_TREE).map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </SelectInput>
+    </div>
+
+    <div className="flex-1">
+      <SelectInput
+        readOnly={readOnly}
+        selectProps={{
+          value: city,
+          onChange: (e) => {
+            setCity(e.target.value);
+            setDistrict("");
+          },
+          disabled: !province,
+        }}
+      >
+        <option value="">시/군/구</option>
+        {Object.keys(REGION_TREE[province] || {}).map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </SelectInput>
+    </div>
+
+    {(() => {
+      const districtOptions = REGION_TREE[province]?.[city] ?? [];
+      const showDistrict = districtOptions.length > 0 || Boolean(district);
+      if (!showDistrict) return null;
+      return (
+        <div className="flex-1"> {/* 3번째 박스도 동일한 비율 유지 */}
           <SelectInput
             readOnly={readOnly}
             selectProps={{
-              value: province,
-              onChange: (e) => {
-                setProvince(e.target.value);
-                setCity("");
-                setDistrict("");
-              },
+              value: district,
+              onChange: (e) => setDistrict(e.target.value),
             }}
           >
-            <option value="">시/도</option>
-            {Object.keys(REGION_TREE).map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
+            <option value="">구</option>
+            {districtOptions.length > 0
+              ? districtOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))
+              : district ? (
+                  <option value={district}>{district}</option>
+                ) : null}
           </SelectInput>
-
-          <SelectInput
-            readOnly={readOnly}
-            selectProps={{
-              value: city,
-              onChange: (e) => {
-                setCity(e.target.value);
-                setDistrict("");
-              },
-              disabled: !province,
-            }}
-          >
-            <option value="">시/군/구</option>
-            {Object.keys(REGION_TREE[province] || {}).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </SelectInput>
-
-          {(() => {
-            const districtOptions = REGION_TREE[province]?.[city] ?? [];
-            const showDistrict = districtOptions.length > 0 || Boolean(district);
-            if (!showDistrict) return null;
-            return (
-              <SelectInput
-                readOnly={readOnly}
-                selectProps={{
-                  value: district,
-                  onChange: (e) => setDistrict(e.target.value),
-                }}
-              >
-                <option value="">구</option>
-                {districtOptions.length > 0
-                  ? districtOptions.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))
-                  : district ? (
-                      <option value={district}>{district}</option>
-                    ) : null}
-              </SelectInput>
-            );
-          })()}
         </div>
-      </FieldRow>
+      );
+    })()}
+  </div>
+</FieldRow>
 
       <FieldRow label="닉네임">
         <TextInput

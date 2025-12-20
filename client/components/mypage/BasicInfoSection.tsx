@@ -246,12 +246,30 @@ export default function BasicInfoSection({
     },
   };
 
-  // parse location string '시도 시군구 읍면동'
+  // normalize provine name variants (e.g. '서울시' -> '서울특별시')
+  const PROVINCE_ALIAS: Record<string, string> = {
+    "서울시": "서울특별시",
+    "부산시": "부산광역시",
+    "대구시": "대구광역시",
+    "인천시": "인천광역시",
+    "광주시": "광주광역시",
+    "대전시": "대전광역시",
+    "울산시": "울산광역시",
+    "세종시": "세종특별자치시",
+    "제주도": "제주특별자치도",
+  };
+
+  const normalizeProvince = (p?: string) => {
+    if (!p) return "";
+    return PROVINCE_ALIAS[p] || p;
+  };
+
+  // parse location string '시도 시군구 읍면동' and normalize province name
   const parseLocation = (loc?: string) => {
     if (!loc) return { province: "", city: "", district: "" };
     const parts = loc.split(" ").filter((p) => p.length > 0);
     return {
-      province: parts[0] || "",
+      province: normalizeProvince(parts[0] || ""),
       city: parts[1] || "",
       district: parts[2] || "",
     };
@@ -371,24 +389,31 @@ export default function BasicInfoSection({
             ))}
           </SelectInput>
 
-          {(
-            REGION_TREE[province]?.[city]?.length ?? 0
-          ) > 0 || Boolean(district) ? (
-            <SelectInput
-              readOnly={readOnly}
-              selectProps={{
-                value: district,
-                onChange: (e) => setDistrict(e.target.value),
-              }}
-            >
-              <option value="">구</option>
-              {REGION_TREE[province][city].map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </SelectInput>
-          ) : null}
+          {(() => {
+            const districtOptions = REGION_TREE[province]?.[city] ?? [];
+            const showDistrict = districtOptions.length > 0 || Boolean(district);
+            if (!showDistrict) return null;
+            return (
+              <SelectInput
+                readOnly={readOnly}
+                selectProps={{
+                  value: district,
+                  onChange: (e) => setDistrict(e.target.value),
+                }}
+              >
+                <option value="">구</option>
+                {districtOptions.length > 0
+                  ? districtOptions.map((d) => (
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
+                    ))
+                  : district ? (
+                      <option value={district}>{district}</option>
+                    ) : null}
+              </SelectInput>
+            );
+          })()}
         </div>
       </FieldRow>
 

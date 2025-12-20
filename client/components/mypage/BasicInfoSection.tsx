@@ -332,72 +332,64 @@ export default function BasicInfoSection({
       </FieldRow>
 
       <FieldRow label="거주 지역">
-        {!readOnly ? (
-          <div className="grid grid-cols-2 gap-3">
-            <SelectInput
-              selectProps={{
-                value: province,
-                onChange: (e) => {
-                  setProvince(e.target.value);
-                  setCity("");
-                  setDistrict("");
-                },
-              }}
-            >
-              <option value="">시/도</option>
-              {Object.keys(REGION_TREE).map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
-            </SelectInput>
-
-            <SelectInput
-              selectProps={{
-                value: city,
-                onChange: (e) => {
-                  setCity(e.target.value);
-                  setDistrict("");
-                },
-                disabled: !province,
-              }}
-            >
-              <option value="">시/군/구</option>
-              {Object.keys(REGION_TREE[province] || {}).map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </SelectInput>
-
-            {(
-              REGION_TREE[province]?.[city]?.length ?? 0
-            ) > 0 && (
-              <SelectInput
-                selectProps={{
-                  value: district,
-                  onChange: (e) => setDistrict(e.target.value),
-                }}
-              >
-                <option value="">구</option>
-                {REGION_TREE[province][city].map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </SelectInput>
-            )}
-          </div>
-        ) : (
-          <TextInput
-            readOnly
-            inputProps={{
-              value: location,
-              onChange: (e) => onChangeLocation(e.target.value),
-              placeholder: "거주 지역을 입력하세요",
+        <div className="grid grid-cols-2 gap-3">
+          <SelectInput
+            readOnly={readOnly}
+            selectProps={{
+              value: province,
+              onChange: (e) => {
+                setProvince(e.target.value);
+                setCity("");
+                setDistrict("");
+              },
             }}
-          />
-        )}
+          >
+            <option value="">시/도</option>
+            {Object.keys(REGION_TREE).map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </SelectInput>
+
+          <SelectInput
+            readOnly={readOnly}
+            selectProps={{
+              value: city,
+              onChange: (e) => {
+                setCity(e.target.value);
+                setDistrict("");
+              },
+              disabled: !province,
+            }}
+          >
+            <option value="">시/군/구</option>
+            {Object.keys(REGION_TREE[province] || {}).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </SelectInput>
+
+          {(
+            REGION_TREE[province]?.[city]?.length ?? 0
+          ) > 0 || Boolean(district) ? (
+            <SelectInput
+              readOnly={readOnly}
+              selectProps={{
+                value: district,
+                onChange: (e) => setDistrict(e.target.value),
+              }}
+            >
+              <option value="">구</option>
+              {REGION_TREE[province][city].map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </SelectInput>
+          ) : null}
+        </div>
       </FieldRow>
 
       <FieldRow label="닉네임">

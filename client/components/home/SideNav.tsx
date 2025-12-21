@@ -2,14 +2,13 @@ import { useRouter } from "next/navigation";
 import { clearAuthCookies } from "@/lib/auth/tokenClient";
 
 interface SideNavProps {
-  active?: "home" | "mypage" | "discover";
+  active?: "home" | "mypage";
 }
 
 const menus: { label: string; key: SideNavProps["active"]; dimmed?: boolean }[] =
   [
     { label: "Home", key: "home" },
     { label: "Mypage", key: "mypage" },
-    { label: "Discover", key: "discover" },
   ];
 
 export default function SideNav({ active = "home" }: SideNavProps) {
@@ -23,7 +22,6 @@ export default function SideNav({ active = "home" }: SideNavProps) {
   const handleNavigate = (key: SideNavProps["active"]) => {
     if (key === "home") router.push("/");
     if (key === "mypage") router.push("/mypage");
-    if (key === "discover") router.push("/discover");
   };
 
   return (

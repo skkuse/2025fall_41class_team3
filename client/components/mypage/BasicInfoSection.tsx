@@ -275,31 +275,27 @@ export default function BasicInfoSection({
     };
   };
 
-  const [path, setPath] = React.useState<string[]>([]);
+  const [province, setProvince] = React.useState<string>(parseLocation(location).province);
+  const [city, setCity] = React.useState<string>(parseLocation(location).city);
+  const [district, setDistrict] = React.useState<string>(parseLocation(location).district);
 
-  // location → path (초기값, 외부 변경)
-React.useEffect(() => {
-  if (!location) {
-    setPath([]);
-  } else {
-    setPath(location.split(" "));
-  }
-}, [location]);
+  // sync when prop location changes
+  React.useEffect(() => {
+    const p = parseLocation(location);
+    setProvince(p.province);
+    setCity(p.city);
+    setDistrict(p.district);
+  }, [location]);
 
-// path → location (항상 덮어쓰기)
-React.useEffect(() => {
-  onChangeLocation(path.join(" "));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [path]);
-
-const getOptionsAtDepth = (depth: number): string[] => {
-  if (depth === 0) return Object.keys(REGION_TREE);
-  if (depth === 1) return Object.keys(REGION_TREE[path[0]] || {});
-  if (depth === 2) return REGION_TREE[path[0]]?.[path[1]] || [];
-  return [];
-};
-
-
+  // update combined location when any part changes
+  React.useEffect(() => {
+    if (!province) return onChangeLocation("");
+    const parts = [province];
+    if (city) parts.push(city);
+    if (district) parts.push(district);
+    onChangeLocation(parts.join(" "));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [province, city, district]);
 
   return (
     <div className="grid gap-5 text-sm text-[#3b4350] sm:grid-cols-2">
@@ -366,44 +362,84 @@ const getOptionsAtDepth = (depth: number): string[] => {
 
 
       <FieldRow label="거주 지역">
-        <div className="flex w-full gap-2">
-          {[0, 1, 2].map((depth) => {
-            const options = getOptionsAtDepth(depth);
-            if (options.length === 0) return null;
+  {/* 기존 grid-cols-2 gap-3을 flex gap-2로 수정 */}
+  <div className="flex w-full gap-2">
+    <div className="flex-1">
+      <SelectInput
+        readOnly={readOnly}
+        selectProps={{
+          className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${province ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
+          disabled: readOnly,
+          value: province,
+          onChange: (e) => {
+            setProvince(e.target.value);
+            setCity("");
+            setDistrict("");
+          },
+        }}
+      >
+        <option value="" disabled hidden>시/도</option>
+        {Object.keys(REGION_TREE).map((p) => (
+          <option key={p} value={p}>
+            {p}
+          </option>
+        ))}
+      </SelectInput>
+    </div>
 
-            return (
-              <div key={depth} className="flex-1">
-                <SelectInput
-                  readOnly={readOnly}
-                  selectProps={{
-                    value: path[depth] ?? "",
-                    disabled: readOnly || (depth > 0 && !path[depth - 1]),
-                    onChange: (e) => {
-                      const next = path.slice(0, depth);
-                      next[depth] = e.target.value;
-                      setPath(next);
-                    },
-                  }}
-                >
-                  <option value="" disabled hidden>
-                    {depth === 0
-                      ? "시/도"
-                      : depth === 1
-                      ? "시/군/구"
-                      : "구"}
+    <div className="flex-1">
+      <SelectInput
+        readOnly={readOnly}
+        selectProps={{
+          className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${city ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
+          value: city,
+          onChange: (e) => {
+            setCity(e.target.value);
+            setDistrict("");
+          },
+          disabled: !province || readOnly,
+        }}
+      >
+        <option value="" disabled hidden>시/군/구</option>
+        {Object.keys(REGION_TREE[province] || {}).map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </SelectInput>
+    </div>
+
+    {(() => {
+      const districtOptions = REGION_TREE[province]?.[city] ?? [];
+      const showDistrict = districtOptions.length > 0 || Boolean(district);
+      if (!showDistrict) return null;
+      return (
+        <div className="flex-1"> {/* 3번째 박스도 동일한 비율 유지 */}
+          <SelectInput
+            readOnly={readOnly}
+            selectProps={{
+              className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${district ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
+              disabled: readOnly,
+              value: district,
+              onChange: (e) => setDistrict(e.target.value),
+            }}
+          >
+            <option value="" disabled hidden>구</option>
+            {districtOptions.length > 0
+              ? districtOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
                   </option>
-                  {options.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </SelectInput>
-              </div>
-            );
-          })}
+                ))
+              : district ? (
+                  <option value={district}>{district}</option>
+                ) : null}
+          </SelectInput>
         </div>
-      </FieldRow>
-
+      );
+    })()}
+  </div>
+</FieldRow>
 
       <FieldRow label="닉네임">
         <TextInput

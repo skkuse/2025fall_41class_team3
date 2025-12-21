@@ -60,6 +60,11 @@ class AppConfig:
     openai_api_key: str = os.environ.get("OPENAI_API_KEY", "")
     llm_model: str = os.environ.get("LLM_MODEL", "gpt-4o")
 
+    # --- Vector Search (Embeddings + FAISS) ---
+    embedding_model: str = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
+    vector_top_m: int = int(os.environ.get("VECTOR_TOP_M", "200"))  # Hard filter 후 FAISS로 Top-M
+    faiss_cache_dir: str = os.environ.get("FAISS_CACHE_DIR", ".faiss_cache")  # 인덱스 캐시 경로
+
     db_host: str = os.environ.get("DB_HOST", "")
     db_user: str = os.environ.get("DB_USER", "")
     db_password: str = os.environ.get("DB_PASSWORD", "")
@@ -74,6 +79,7 @@ class AppConfig:
 
     reason_chunk_size: int = int(os.environ.get("REASON_CHUNK_SIZE", "20"))
     reason_max_tokens: int = int(os.environ.get("REASON_MAX_TOKENS", "800"))
+
 
 CFG = AppConfig()
 
@@ -259,6 +265,11 @@ def preprocess_policy_row(policy: Dict[str, Any]) -> Dict[str, Any]:
     policy["sprtTrgtAgeLmtYn"] = (policy.get("sprtTrgtAgeLmtYn") or "N").strip()
     policy["earnCndSeCd"] = (policy.get("earnCndSeCd") or "무관").strip()
 
+    min_age = _to_int(policy.get("sprtTrgtMinAge"), 0)
+    max_age = _to_int(policy.get("sprtTrgtMaxAge"), 0)
+    if min_age == 0 and max_age == 0:
+        policy["sprtTrgtAgeLmtYn"] = "N"
+
     # ✅ policy_type 추가
     policy["policy_type"] = classify_policy_type(policy)
     return policy
@@ -376,6 +387,15 @@ def _intersect(a: List[str], b: List[str]) -> List[str]:
 def summarize_for_llm(p: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]:
     r_strength = region_match_strength(p.get("zipCd", []), user.get("region", []))
     kw = _intersect(p.get("plcyKywdNm", []), user.get("interest_keywords", []))
+
+    limit = (p.get("sprtTrgtAgeLmtYn") or "N")
+    min_age = _to_int(p.get("sprtTrgtMinAge"), 0)
+    max_age = _to_int(p.get("sprtTrgtMaxAge"), 0)
+
+    if limit == "N" or (min_age == 0 and max_age == 0):
+        age_obj = {"limit": "N", "user": _to_int(user.get("age"), 0)}
+    else:
+        age_obj = {"limit": limit, "min": min_age, "max": max_age, "user": _to_int(user.get("age"), 0)}
 
     return {
         "id": int(p.get("id") or -1),
@@ -510,6 +530,158 @@ def build_candidate_view(
 
     deterministic_shuffle(view, seed)
     return view
+
+# --------------------------
+# Vector Search (Embeddings + FAISS)
+# --------------------------
+def _policy_text_for_embedding(p: Dict[str, Any]) -> str:
+    """
+    임베딩에 넣을 텍스트: 너무 길면 비용/속도 망가짐.
+    핵심 필드 위주로 1~2KB 정도로 제한.
+    """
+    name = (p.get("plcyNm") or "").strip()
+    support = (p.get("plcySprtCn") or "").strip()
+    desc = (p.get("plcyExplnCn") or "").strip()
+    cat = f"{(p.get('lclsfNm') or '').strip()} {(p.get('mclsfNm') or '').strip()}".strip()
+    method = (p.get("plcyPvsnMthdCd") or "").strip()
+    # 키워드/지역/타입도 약간 섞어주면 의미 유사도에 도움 됨
+    kywd = ", ".join((p.get("plcyKywdNm") or [])[:10])
+    region = ", ".join((p.get("zipCd") or [])[:5])
+    ptype = (p.get("policy_type") or "").strip()
+
+    # 과하게 길면 잘라서 넣기
+    support = support[:600]
+    desc = desc[:600]
+
+    return (
+        f"정책명: {name}\n"
+        f"분류: {cat}\n"
+        f"유형: {ptype}\n"
+        f"지원방식: {method}\n"
+        f"지원내용: {support}\n"
+        f"설명: {desc}\n"
+        f"키워드: {kywd}\n"
+        f"지역: {region}\n"
+    ).strip()
+
+def _policies_fingerprint(policies: List[Dict[str, Any]]) -> str:
+    """
+    인덱스 캐시 무효화용 fingerprint.
+    DB에 updated_at이 있으면 그걸 쓰는 게 더 좋지만,
+    여기선 id + 주요 텍스트 해시로 안정적으로 만들자.
+    """
+    h = hashlib.sha256()
+    for p in sorted(policies, key=lambda x: int(x.get("id") or 0)):
+        pid = str(int(p.get("id") or 0)).encode("utf-8")
+        h.update(pid)
+        h.update(((p.get("plcyNm") or "")[:80]).encode("utf-8"))
+        h.update(((p.get("plcySprtCn") or "")[:120]).encode("utf-8"))
+        h.update(((p.get("plcyExplnCn") or "")[:120]).encode("utf-8"))
+    return h.hexdigest()[:16]
+
+def vector_top_m_with_faiss(
+    cfg: AppConfig,
+    policies: List[Dict[str, Any]],
+    query: str,
+    top_m: int
+) -> List[Dict[str, Any]]:
+    """
+    Hard filter 통과 정책들 중에서 FAISS(임베딩 유사도)로 Top-M만 추림.
+    - 캐시: policies fingerprint 기반으로 로컬에 저장/재사용
+    - 실패 시: 원본 그대로 반환 (서비스 다운 방지)
+    """
+    if not policies:
+        return policies
+    if not query or not query.strip():
+        return policies[:top_m] if len(policies) > top_m else policies
+
+    try:
+        # 지연 import: 환경에 없으면 여기서 바로 예외 나고 fallback 가능
+        from langchain_core.documents import Document
+        from langchain_openai import OpenAIEmbeddings
+        from langchain_community.vectorstores import FAISS
+    except Exception as e:
+        logger.warning("FAISS/Embeddings 모듈 로드 실패: %s (fallback=로컬 랭킹)", e)
+        return policies[:top_m] if len(policies) > top_m else policies
+
+    try:
+        os.makedirs(cfg.faiss_cache_dir, exist_ok=True)
+        fp = _policies_fingerprint(policies)
+        cache_path = os.path.join(cfg.faiss_cache_dir, f"faiss_{fp}")
+        meta_path = os.path.join(cfg.faiss_cache_dir, f"faiss_{fp}.json")
+
+        embeddings = OpenAIEmbeddings(
+            model=cfg.embedding_model,
+            openai_api_key=cfg.openai_api_key,
+        )
+
+        # 캐시 로드 시도
+        vectorstore = None
+        if os.path.isdir(cache_path) and os.path.isfile(meta_path):
+            try:
+                with open(meta_path, "r", encoding="utf-8") as f:
+                    meta = json.load(f)
+                if meta.get("fingerprint") == fp and meta.get("embedding_model") == cfg.embedding_model:
+                    vectorstore = FAISS.load_local(
+                        cache_path, embeddings, allow_dangerous_deserialization=True
+                    )
+                    logger.info("FAISS 캐시 로드 성공(fp=%s, n=%d)", fp, meta.get("count", -1))
+            except Exception as e:
+                logger.warning("FAISS 캐시 로드 실패: %s (재생성)", e)
+                vectorstore = None
+
+        # 없으면 새로 생성
+        if vectorstore is None:
+            docs = []
+            for p in policies:
+                pid = int(p.get("id") or 0)
+                docs.append(
+                    Document(
+                        page_content=_policy_text_for_embedding(p),
+                        metadata={"id": pid},
+                    )
+                )
+            vectorstore = FAISS.from_documents(docs, embeddings)
+
+            # 저장 (다음 실행부터 빠름)
+            try:
+                vectorstore.save_local(cache_path)
+                with open(meta_path, "w", encoding="utf-8") as f:
+                    json.dump(
+                        {"fingerprint": fp, "embedding_model": cfg.embedding_model, "count": len(policies)},
+                        f,
+                        ensure_ascii=False,
+                    )
+                logger.info("FAISS 캐시 저장(fp=%s, n=%d)", fp, len(policies))
+            except Exception as e:
+                logger.warning("FAISS 캐시 저장 실패(무시): %s", e)
+
+        # 검색: Top-M
+        # similarity_search_with_score는 낮을수록 더 유사(거리)일 수도, 점수 정의는 구현에 따라 다름.
+        # 우리는 일단 결과 순서만 믿고 id를 추린다.
+        hits = vectorstore.similarity_search(query, k=min(top_m, len(policies)))
+
+        top_ids = []
+        seen = set()
+        for d in hits:
+            pid = int(d.metadata.get("id") or 0)
+            if pid and pid not in seen:
+                top_ids.append(pid)
+                seen.add(pid)
+
+        id2p = {int(p.get("id") or 0): p for p in policies}
+        out = [id2p[i] for i in top_ids if i in id2p]
+
+        # 혹시 hits가 너무 빈약하면(이상 케이스) fallback
+        if not out:
+            return policies[:top_m] if len(policies) > top_m else policies
+
+        return out
+
+    except Exception as e:
+        logger.warning("vector_top_m_with_faiss 실패: %s (fallback=원본)", e)
+        return policies[:top_m] if len(policies) > top_m else policies
+
 
 # --------------------------
 # LLM I/O
@@ -732,10 +904,14 @@ def main(argv: List[str]) -> int:
         print(json.dumps([], ensure_ascii=False, indent=2))
         return 0
 
+    faiss_pool = vector_top_m_with_faiss(CFG, filtered, user_preference, top_m=CFG.vector_top_m)
+    logger.info("FAISS pool: %d -> %d", len(filtered), len(faiss_pool))
+
     today_key = datetime.now(timezone.utc).strftime("%Y%m%d")
     seed = stable_seed_int(user_id, today_key)
 
-    candidates = build_candidate_view(filtered, user_profile, user_preference, CFG.top_n_view, seed)
+    candidates = build_candidate_view(faiss_pool, user_profile, user_preference, CFG.top_n_view, seed)
+
 
     selected_ids = select_policy_ids_with_llm(CFG, candidates, user_profile, user_preference, k=CFG.select_k)
 
@@ -747,7 +923,7 @@ def main(argv: List[str]) -> int:
         )
         selected_ids = [int(s["id"]) for s in candidates_sorted[:CFG.select_k]]
 
-    id_to_policy = {int(p.get("id") or -1): p for p in filtered}
+    id_to_policy = {int(p.get("id") or -1): p for p in faiss_pool}
     details = [id_to_policy[i] for i in selected_ids if i in id_to_policy]
 
     for p in details:

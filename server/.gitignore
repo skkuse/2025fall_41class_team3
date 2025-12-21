@@ -21,3 +21,7 @@ logs/
 docs/
 swagger.json
 swaggerDef.json
+
+.faiss_cache/
+*.faiss
+*.pkl

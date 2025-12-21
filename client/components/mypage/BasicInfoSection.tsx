@@ -279,6 +279,17 @@ export default function BasicInfoSection({
   const [city, setCity] = React.useState<string>(parseLocation(location).city);
   const [district, setDistrict] = React.useState<string>(parseLocation(location).district);
 
+  const districtOptions = React.useMemo(() => {
+  return REGION_TREE[province]?.[city] ?? [];
+  }, [province, city]);
+
+  React.useEffect(() => {
+    if (district && districtOptions.length === 0) {
+      setDistrict("");
+    }
+  }, [district, districtOptions.length]);
+
+
   // sync when prop location changes
   React.useEffect(() => {
     const p = parseLocation(location);
@@ -288,78 +299,72 @@ export default function BasicInfoSection({
   }, [location]);
 
   // update combined location when any part changes
+  // update combined location when any part changes
   React.useEffect(() => {
     if (!province) return onChangeLocation("");
+
     const parts = [province];
     if (city) parts.push(city);
-    if (district) parts.push(district);
+
+    // ✅ 구 목록이 있을 때만 district 포함
+    if (districtOptions.length > 0 && district) parts.push(district);
+
     onChangeLocation(parts.join(" "));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [province, city, district]);
+  }, [province, city, district, districtOptions.length]);
+
 
   return (
     <div className="grid gap-5 text-sm text-[#3b4350] sm:grid-cols-2">
       <FieldRow label="생년월일">
-  <div className="grid w-full grid-cols-3 gap-2">
-    <div className="flex items-center gap-2">
-      <SelectInput
-        readOnly={readOnly}
-        selectProps={{
-          className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${birthYear ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
-          value: birthYear,
-          onChange: (e) => onChangeBirth("year", e.target.value),
-        }}
-      >
-        <option value="" disabled hidden>년도</option>
-        {years.map((y) => (
-          <option key={y} value={y}>
-            {y}
-          </option>
-        ))}
-      </SelectInput>
-      <span className="shrink-0 text-xs text-[#8a8f99]">년</span>
-    </div>
-
-    <div className="flex items-center gap-2">
-      <SelectInput
-        readOnly={readOnly}
-        selectProps={{
-          className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${birthMonth ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
-          value: birthMonth,
-          onChange: (e) => onChangeBirth("month", e.target.value),
-        }}
-      >
-        <option value="" disabled hidden>월</option>
-        {months.map((m) => (
-          <option key={m} value={m}>
-            {m}
-          </option>
-        ))}
-      </SelectInput>
-      <span className="shrink-0 text-xs text-[#8a8f99]">월</span>
-    </div>
-
-    <div className="flex items-center gap-2">
-      <SelectInput
-        readOnly={readOnly}
-        selectProps={{
-          className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${birthDay ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
-          value: birthDay,
-          onChange: (e) => onChangeBirth("day", e.target.value),
-        }}
-      >
-        <option value="" disabled hidden>일</option>
-        {days.map((d) => (
-          <option key={d} value={d}>
-            {d}
-          </option>
-        ))}
-      </SelectInput>
-      <span className="shrink-0 text-xs text-[#8a8f99]">일</span>
-    </div>
-  </div>
-</FieldRow>
-
+        <div className="flex flex-wrap items-center gap-2">
+          <SelectInput
+            readOnly={readOnly}
+            selectProps={{
+              value: birthYear,
+              onChange: (e) => onChangeBirth("year", e.target.value),
+            }}
+          >
+            <option value="">년도</option>
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </SelectInput>
+          <span className="text-xs text-[#8a8f99]">년</span>
+          <SelectInput
+            readOnly={readOnly}
+            selectProps={{
+              value: birthMonth,
+              onChange: (e) => onChangeBirth("month", e.target.value),
+            }}
+          >
+            <option value="">월</option>
+            {months.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </SelectInput>
+          <span className="text-xs text-[#8a8f99]">월</span>
+          <SelectInput
+            readOnly={readOnly}
+            selectProps={{
+              value: birthDay,
+              onChange: (e) => onChangeBirth("day", e.target.value),
+            }}
+          >
+            <option value="">일</option>
+            {days.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </SelectInput>
+          <span className="text-xs text-[#8a8f99]">일</span>
+        </div>
+      </FieldRow>
 
       <FieldRow label="거주 지역">
   {/* 기존 grid-cols-2 gap-3을 flex gap-2로 수정 */}
@@ -368,8 +373,6 @@ export default function BasicInfoSection({
       <SelectInput
         readOnly={readOnly}
         selectProps={{
-          className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${province ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
-          disabled: readOnly,
           value: province,
           onChange: (e) => {
             setProvince(e.target.value);
@@ -378,7 +381,7 @@ export default function BasicInfoSection({
           },
         }}
       >
-        <option value="" disabled hidden>시/도</option>
+        <option value="">시/도</option>
         {Object.keys(REGION_TREE).map((p) => (
           <option key={p} value={p}>
             {p}
@@ -391,16 +394,15 @@ export default function BasicInfoSection({
       <SelectInput
         readOnly={readOnly}
         selectProps={{
-          className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${city ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
           value: city,
           onChange: (e) => {
             setCity(e.target.value);
             setDistrict("");
           },
-          disabled: !province || readOnly,
+          disabled: !province,
         }}
       >
-        <option value="" disabled hidden>시/군/구</option>
+        <option value="">시/군/구</option>
         {Object.keys(REGION_TREE[province] || {}).map((c) => (
           <option key={c} value={c}>
             {c}
@@ -411,20 +413,18 @@ export default function BasicInfoSection({
 
     {(() => {
       const districtOptions = REGION_TREE[province]?.[city] ?? [];
-      const showDistrict = districtOptions.length > 0 || Boolean(district);
+      const showDistrict = districtOptions.length > 0;
       if (!showDistrict) return null;
       return (
         <div className="flex-1"> {/* 3번째 박스도 동일한 비율 유지 */}
           <SelectInput
             readOnly={readOnly}
             selectProps={{
-              className: `w-full border border-[#e6e9ee] rounded px-3 py-2 ${readOnly ? 'bg-[#f7f8fa]' : 'bg-white'} ${district ? 'text-[#3b4350]' : 'text-[#8a8f99]'} disabled:cursor-not-allowed disabled:bg-[#f5f6f8]`,
-              disabled: readOnly,
               value: district,
               onChange: (e) => setDistrict(e.target.value),
             }}
           >
-            <option value="" disabled hidden>구</option>
+            <option value="">구</option>
             {districtOptions.length > 0
               ? districtOptions.map((d) => (
                   <option key={d} value={d}>

@@ -1,5 +1,7 @@
 const db = require('../config/db');
 const { runPython } = require('../utils/pythonRunner');
+const { normalizePolicyRow } = require("../utils/policyNormalizer");
+
 
 // 정책 검색
 exports.search = async (req, res) => {
@@ -80,12 +82,13 @@ exports.getSummary = async (req, res) => {
 
 // 정책 상세/인기/최근
 exports.getDetail = async (req, res) => {
-  const [rows] = await db.query('SELECT * FROM policies WHERE id = ?', [req.params.id]);
+  const [rows] = await db.query("SELECT * FROM policies WHERE id = ?", [req.params.id]);
   if (rows.length === 0) return res.status(404).json({ message: "정책 없음" });
-  const row = rows[0];
-  row.plcyKywdNm = (row.plcyKywdNm || "").split(",").map(k => k.trim()).filter(Boolean);
+
+  const row = normalizePolicyRow(rows[0]);
   res.json(row);
 };
+
 
 exports.getPopular = async (req, res) => {
   const [rows] = await db.query("SELECT id, plcyNm FROM policies ORDER BY inqCnt DESC LIMIT 3");

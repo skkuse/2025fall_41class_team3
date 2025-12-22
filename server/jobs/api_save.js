@@ -152,6 +152,7 @@ const outputSpec = [
   { key: 'bizPrdEndYmd',         type: 'String', desc: '사업기간종료일자' },
   { key: 'bizPrdEtcCn',          type: 'String', desc: '사업기간기타내용' },
   { key: 'zipCd',                type: 'String', desc: '정책거주지역코드' },
+  { key: 'zipCdRaw', type: 'String', desc: '정책거주지역(숫자코드)' },
   { key: 'sprtTrgtMinAge',       type: 'String', desc: '지원대상최소연령' },
   { key: 'sprtTrgtMaxAge',       type: 'String', desc: '지원대상최대연령' },
   { key: 'sprtTrgtAgeLmtYn',     type: 'String', desc: '지원대상연령제한여부' },
@@ -233,13 +234,18 @@ const pool = mysql.createPool({
 
 // 정책을 한글 변환해서 DB에 저장
 async function upsertPolicy(policy) {
-   // outputSpec 순서대로 의미 변환 적용
   const keys = outputSpec.map(({ key }) => key);
   const fields = keys.join(',');
   const placeholders = keys.map(() => '?').join(',');
   const updateFields = keys.map(k => `${k}=VALUES(${k})`).join(',');
-  // 각 필드를 변환해서 저장!
-  const values = keys.map(k => convertCodeToMeaning(k, policy[k] || ''));
+
+  const values = keys.map(k => {
+    if (k === 'zipCdRaw') {
+      return policy['zipCd'] || ''; 
+    }
+    
+    return convertCodeToMeaning(k, policy[k] || '');
+  });
 
   const sql = `
     INSERT INTO policies (${fields}) VALUES (${placeholders})

@@ -910,9 +910,9 @@ export default function SignupPage() {
               </div>
               <button
                 className="w-full max-w-xs rounded-md bg-blue-600 px-6 py-3 font-bold text-white"
-                onClick={() => router.push("/auth/signin")}
+                onClick={() => router.push("/")}
               >
-                로그인하기
+                시작하기
               </button>
             </div>
           </div>

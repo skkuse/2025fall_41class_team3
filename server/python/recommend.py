@@ -80,6 +80,27 @@ class AppConfig:
     reason_chunk_size: int = int(os.environ.get("REASON_CHUNK_SIZE", "20"))
     reason_max_tokens: int = int(os.environ.get("REASON_MAX_TOKENS", "800"))
 
+    region_bonus_exact: float = float(os.environ.get("REGION_BONUS_EXACT", "6.0"))
+    region_bonus_partial: float = float(os.environ.get("REGION_BONUS_PARTIAL", "4.0"))
+    region_bonus_nationwide: float = float(os.environ.get("REGION_BONUS_NATIONWIDE", "0.0"))
+    region_bonus_unknown: float = float(os.environ.get("REGION_BONUS_UNKNOWN", "0.5"))
+    region_bonus_mismatch: float = float(os.environ.get("REGION_BONUS_MISMATCH", "-10.0"))
+
+    kw_bonus_per_overlap: float = float(os.environ.get("KW_BONUS_PER_OVERLAP", "2.2"))
+    kw_bonus_cap: int = int(os.environ.get("KW_BONUS_CAP", "5"))
+
+    length_penalty_short: float = float(os.environ.get("LENGTH_PENALTY_SHORT", "-1.5"))
+    support_short_len: int = int(os.environ.get("SUPPORT_SHORT_LEN", "20"))
+    desc_short_len: int = int(os.environ.get("DESC_SHORT_LEN", "30"))
+
+    pref_weight_default: float = float(os.environ.get("PREF_WEIGHT_DEFAULT", "1.5"))
+    pref_weight_with_intent: float = float(os.environ.get("PREF_WEIGHT_WITH_INTENT", "2.8"))
+
+    intent_match_bonus: float = float(os.environ.get("INTENT_MATCH_BONUS", "10.0"))
+    intent_mismatch_bonus: float = float(os.environ.get("INTENT_MISMATCH_BONUS", "-4.0"))
+    kw_scale_intent_match: float = float(os.environ.get("KW_SCALE_INTENT_MATCH", "1.0"))
+    kw_scale_intent_mismatch: float = float(os.environ.get("KW_SCALE_INTENT_MISMATCH", "0.25"))
+
 
 CFG = AppConfig()
 
@@ -283,6 +304,63 @@ def load_policies_from_db(cfg: AppConfig) -> List[Dict[str, Any]]:
     logger.info("policies loaded: %d", len(policies))
     return policies
 
+def load_policies_from_db_sql_prefilter(cfg: AppConfig, user: Dict[str, Any]) -> List[Dict[str, Any]]:
+    ua = _to_int(user.get("age"), 0)
+    ui = _to_int(user.get("income"), 0)
+
+    # 지역은 DB 스키마/데이터가 제각각이라 SQL에서 완벽매칭은 힘듦.
+    # 대신 "느슨한 OR LIKE"로 1차 축소만 (최종 판정은 region_match가 함)
+    region_tokens = normalize_user_region_list(user.get("region", []))
+    region_tokens = [t for t in region_tokens if t]  # 안전
+    region_tokens = region_tokens[:3]  # 과도한 OR 방지
+
+    where = []
+    params = []
+
+    # --- age prefilter ---
+    if ua > 0:
+        where.append(
+            "("
+            "sprtTrgtAgeLmtYn='N' "
+            "OR (sprtTrgtMinAge=0 AND sprtTrgtMaxAge=0) "
+            "OR (sprtTrgtMinAge <= %s AND sprtTrgtMaxAge >= %s)"
+            ")"
+        )
+        params.extend([ua, ua])
+
+    # --- income prefilter ---
+    if ui > 0:
+        where.append(
+            "("
+            "earnCndSeCd IN ('무관','제한없음','') "
+            "OR earnCndSeCd IS NULL "
+            "OR (earnMinAmt <= %s AND earnMaxAmt >= %s)"
+            ")"
+        )
+        params.extend([ui, ui])
+
+    # --- region coarse prefilter (optional) ---
+    if region_tokens:
+        ors = ["zipCd IS NULL", "zipCd IN ('','무관','제한없음')"]
+        for t in region_tokens:
+            ors.append("zipCd LIKE %s")
+            params.append(f"%{t}%")
+        where.append("(" + " OR ".join(ors) + ")")
+
+    sql = "SELECT * FROM policies"
+    if where:
+        sql += " WHERE " + " AND ".join(where)
+
+    db = MySQL(cfg)
+    with db.connect() as conn, conn.cursor() as cur:
+        cur.execute(sql, tuple(params))
+        rows = cur.fetchall()
+
+    policies = [preprocess_policy_row(r) for r in rows]
+    logger.info("policies loaded (sql prefilter): %d", len(policies))
+    return policies
+
+
 def load_user_from_db(cfg: AppConfig, user_id: str) -> Dict[str, Any]:
     db = MySQL(cfg)
     with db.connect() as conn, conn.cursor() as cur:
@@ -344,6 +422,7 @@ def _multi_field_match(policy_list: List[str], user_list: List[str]) -> bool:
 def filter_policies(policies: List[Dict[str, Any]], user: Dict[str, Any]) -> List[Dict[str, Any]]:
     result = []
     for p in policies:
+        # 1) age (불가능하면 탈락)
         age_limit = p.get("sprtTrgtAgeLmtYn", "N")
         if age_limit != "N":
             min_age = _to_int(p.get("sprtTrgtMinAge"), 0)
@@ -352,15 +431,11 @@ def filter_policies(policies: List[Dict[str, Any]], user: Dict[str, Any]) -> Lis
             if not (min_age == 0 and max_age == 0) and ua and not (min_age <= ua <= max_age):
                 continue
 
+        # 2) region (불가능하면 탈락)
         if not region_match(p.get("zipCd", []), user.get("region", [])):
             continue
 
-        if not _multi_field_match(p.get("mrgSttsCd", []), user.get("marriage", [])): continue
-        if not _multi_field_match(p.get("schoolCd", []), user.get("education", [])): continue
-        if not _multi_field_match(p.get("jobCd", []), user.get("job", [])):          continue
-        if not _multi_field_match(p.get("plcyMajorCd", []), user.get("major", [])):  continue
-        if not _multi_field_match(p.get("sbizCd", []), user.get("special", [])):     continue
-
+        # 3) income (조건이 있을 때만 불가능이면 탈락)
         income_type = (p.get("earnCndSeCd") or "무관").strip()
         if income_type not in ("무관", "제한없음", ""):
             min_income = _to_int(p.get("earnMinAmt"), 0)
@@ -369,10 +444,10 @@ def filter_policies(policies: List[Dict[str, Any]], user: Dict[str, Any]) -> Lis
             if ui and not (min_income <= ui <= max_income):
                 continue
 
-        # ✅ 관심키워드 하드필터 제거
+        # ✅ marriage/school/job/major/sbiz 는 하드필터에서 제거 (A)
         result.append(p)
 
-    logger.info("filtered policies: %d -> %d", len(policies), len(result))
+    logger.info("filtered policies(strict): %d -> %d", len(policies), len(result))
     return result
 
 # --------------------------
@@ -428,47 +503,43 @@ def summarize_for_llm(p: Dict[str, Any], user: Dict[str, Any]) -> Dict[str, Any]
 def _tokenize_korean(s: str) -> List[str]:
     return [t for t in re.split(r"[^\w가-힣]+", (s or "").lower()) if t]
 
-def pre_score(summary: Dict[str, Any], pref_tokens: List[str], intent: Optional[str]) -> float:
+def pre_score(cfg: AppConfig, summary: Dict[str, Any], pref_tokens: List[str], intent: Optional[str]) -> float:
     m = summary.get("matches", {})
     region_strength = m.get("region_strength", "unknown")
     kw_overlap = int(m.get("keyword_overlap", 0))
 
     text = f"{summary.get('name','')} {' '.join(m.get('keywords',[]))} {summary.get('support','')} {summary.get('desc','')}"
     tl = text.lower()
-
     pref_hit = sum(1 for t in pref_tokens if t and t in tl)
 
     region_bonus = {
-        "exact": 6.0,
-        "partial": 4.0,
-        "nationwide": 0.0,
-        "unknown": 0.5,
-        "mismatch": -10.0,
+        "exact": cfg.region_bonus_exact,
+        "partial": cfg.region_bonus_partial,
+        "nationwide": cfg.region_bonus_nationwide,
+        "unknown": cfg.region_bonus_unknown,
+        "mismatch": cfg.region_bonus_mismatch,
     }.get(region_strength, 0.0)
 
-    kw_bonus = min(kw_overlap, 5) * 2.2
+    kw_bonus = min(kw_overlap, cfg.kw_bonus_cap) * cfg.kw_bonus_per_overlap
 
     length_penalty = 0.0
-    if len(summary.get("support", "")) < 20 and len(summary.get("desc", "")) < 30:
-        length_penalty = -1.5
+    if len(summary.get("support", "")) < cfg.support_short_len and len(summary.get("desc", "")) < cfg.desc_short_len:
+        length_penalty = cfg.length_penalty_short
 
     policy_type = summary.get("policy_type", "other")
     intent_bonus = 0.0
 
     if intent:
-        # preference가 명확한 '요청'일 때: long-term profile(interest)보다 우선
         if policy_type == intent:
-            intent_bonus = 10.0
-            pref_weight = 2.8
-            kw_scale = 1.0
+            intent_bonus = cfg.intent_match_bonus
+            pref_weight = cfg.pref_weight_with_intent
+            kw_bonus *= cfg.kw_scale_intent_match
         else:
-            # intent 불일치면 강하게 누르기(대출이 취업을 이기는 문제 방지)
-            intent_bonus = -4.0
-            pref_weight = 2.8
-            kw_scale = 0.25
-        kw_bonus *= kw_scale
+            intent_bonus = cfg.intent_mismatch_bonus
+            pref_weight = cfg.pref_weight_with_intent
+            kw_bonus *= cfg.kw_scale_intent_mismatch
     else:
-        pref_weight = 1.5
+        pref_weight = cfg.pref_weight_default
 
     return (pref_hit * pref_weight) + region_bonus + kw_bonus + length_penalty + intent_bonus
 
@@ -505,7 +576,8 @@ def build_candidate_view(
     pref_tokens = _tokenize_korean(user_preference)
     intent = detect_intent(user_preference)
 
-    scored = [(pre_score(s, pref_tokens, intent), s) for s in summaries]
+    # ✅ 여기서 점수 계산 + 정렬이 맞음
+    scored = [(pre_score(CFG, s, pref_tokens, intent), s) for s in summaries]
     scored.sort(key=lambda x: x[0], reverse=True)
 
     if intent:
@@ -530,6 +602,7 @@ def build_candidate_view(
 
     deterministic_shuffle(view, seed)
     return view
+
 
 # --------------------------
 # Vector Search (Embeddings + FAISS)
@@ -897,8 +970,8 @@ def main(argv: List[str]) -> int:
         return 2
 
     user_profile = load_user_from_db(CFG, user_id)
-    policies = load_policies_from_db(CFG)
-    filtered = filter_policies(policies, user_profile)
+    policies = load_policies_from_db_sql_prefilter(CFG, user_profile)  # (D)
+    filtered = filter_policies(policies, user_profile)                 # (A: strict only)
 
     if not filtered:
         print(json.dumps([], ensure_ascii=False, indent=2))

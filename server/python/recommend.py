@@ -1,21 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-개선 요약 (완성본)
-- 지역 매칭 강화: "경기도 수원시" vs "경기"/"경기도"/"11" 같은 케이스 대응
-- 관심키워드: 하드필터 제거 -> 점수화(랭킹 신호로만 사용)
-- 재현성 시드: Python hash 랜덤성 제거 -> sha256 기반 정수 시드
-- 배지/설명: 근거 약한 "조건 부합" 문구 제거(오해 방지)
-- LLM 호출: invoke 통일 + ID 유효성/중복 제거 강화
-- ✅ 핵심: user_preference를 '의도(intent)'로 해석해서 우선 반영
-  - preference에서 intent 추출(취업/주거/창업/금융/세금/교육)
-  - 정책을 rule-based로 policy_type 분류
-  - 후보 구성에서 intent 타입 최소 확보 (top_n_view의 60%, 최소 3개)
-  - pre_score에서 intent 불일치 항목의 키워드 보너스 강하게 축소
-  - LLM 선택 프롬프트에도 intent 제약(가능하면 최소 3개)
-"""
-
 import os
 import sys
 import json
@@ -74,7 +59,7 @@ class AppConfig:
     top_n_view: int = int(os.environ.get("TOP_N_VIEW", "40"))
     select_k: int = int(os.environ.get("SELECT_K", "5"))
 
-    llm_timeout_s: int = int(os.environ.get("LLM_TIMEOUT_S", "30"))
+    llm_timeout_s: int = int(os.environ.get("LLM_TIMEOUT_S", "30"))"
     llm_retries: int = int(os.environ.get("LLM_RETRIES", "2"))
 
     reason_chunk_size: int = int(os.environ.get("REASON_CHUNK_SIZE", "20"))
@@ -96,7 +81,7 @@ class AppConfig:
     pref_weight_default: float = float(os.environ.get("PREF_WEIGHT_DEFAULT", "1.5"))
     pref_weight_with_intent: float = float(os.environ.get("PREF_WEIGHT_WITH_INTENT", "2.8"))
 
-    intent_match_bonus: float = float(os.environ.get("INTENT_MATCH_BONUS", "10.0"))
+    intent_match_bonus: float = float(os.environ.get("INTENT_MATCH_BONUS, "10.0"))
     intent_mismatch_bonus: float = float(os.environ.get("INTENT_MISMATCH_BONUS", "-4.0"))
     kw_scale_intent_match: float = float(os.environ.get("KW_SCALE_INTENT_MATCH", "1.0"))
     kw_scale_intent_mismatch: float = float(os.environ.get("KW_SCALE_INTENT_MISMATCH", "0.25"))
